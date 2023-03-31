@@ -1,0 +1,90 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+task compileNativeAIDL {
+    doLast {
+        def sdkDirectory = android.sdkDirectory
+        def buildToolsVersion = android.buildToolsVersion
+        def aidlCpp = new File(sdkDirectory, "build-tools/${buildToolsVersion}/aidl")
+
+        def outDir = file("${projectDir}/src/main/cpp/aidl")
+        def headerOut = file("${projectDir}/src/main/cpp/includes")
+        def importPath = file("${projectDir}/src/main/aidl")
+        def aidlFile = file("${projectDir}/src/main/aidl/io/s57/smserver/ISMService.aidl")
+
+        exec {
+            executable aidlCpp
+            args '--lang=ndk',
+                    '-o', outDir,
+                    '-h', headerOut,
+                    '-I', importPath,
+                    aidlFile
+        }
+    }
+}
+
+afterEvaluate {
+    preBuild.dependsOn(compileNativeAIDL)
+}
+
+clean.doLast {
+    def aidlCppOutDir = [projectDir.absolutePath, 'src', 'main', 'cpp', 'aidl'].join(File.separator)
+
+    def aidlCppHeaderOutDir = [projectDir.absolutePath, 'src', 'main', 'cpp', 'includes',
+                               'aidl'].join(File.separator)
+
+    file(aidlCppOutDir).deleteDir()
+    file(aidlCppHeaderOutDir).deleteDir()
+}
+
+
+android {
+    namespace 'io.s57.smserver'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "io.s57.smserver"
+        minSdk 29
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.18.1'
+        }
+    }
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.8.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
